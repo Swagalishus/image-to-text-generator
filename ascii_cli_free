@@ -1,0 +1,62 @@
+import streamlit as st
+from PIL import Image
+
+# Character set ordered from darkest to lightest density
+ASCII_CHARS = ["@", "#", "S", "%", "?", "*", "+", ";", ":", ",", "."]
+
+def resize_image(image, new_width=40):
+    width, height = image.size
+    aspect_ratio = height / width
+    # 0.55 compensates for the taller height of text characters relative to their width
+    new_height = int(new_width * aspect_ratio * 0.55)
+    return image.resize((new_width, new_height))
+
+def convert_image_to_ascii(image, new_width=40):
+    image = resize_image(image, new_width)
+    image = image.convert("L")
+    pixels = image.getdata()
+    ascii_str = "".join([ASCII_CHARS[pixel * len(ASCII_CHARS) // 256] for pixel in pixels])
+    img_width = image.width
+    ascii_lines = [ascii_str[i:i + img_width] for i in range(0, len(ascii_str), img_width)]
+    return "\n".join(ascii_lines)
+
+# Streamlit Page Config
+st.set_page_config(page_title="Steam ASCII Art Generator", page_icon="🎨", layout="centered")
+
+st.title("Steam Profile ASCII Art Generator")
+st.markdown("Convert any image into clean, retro text art optimized specifically for Steam profile boxes, info panels, and artwork showcases without needing any paid APIs!")
+
+with st.sidebar:
+    st.header("Configuration")
+    target_width = st.slider("Character Width", min_width=20, max_value=60, value=40, help="Steam profile showcases work best between 35 and 45 characters wide to avoid text wrapping.")
+    st.markdown("---")
+    st.info("💡 **Tip:** Images with transparent backgrounds or high contrast convert much better into crisp ASCII blocks!")
+
+uploaded_file = st.file_uploader("Upload an Image (.png, .jpg, .jpeg)", type=["png", "jpg", "jpeg"])
+
+if uploaded_file is not None:
+    try:
+        input_image = Image.open(uploaded_file)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Original Image")
+            st.image(input_image, use_column_width=True)
+            
+        with st.spinner("Processing image pixels..."):
+            ascii_result = convert_image_to_ascii(input_image, new_width=target_width)
+            
+        st.subheader("Generated Steam ASCII Art")
+        st.text_code(ascii_result, language="text")
+        
+        # Download button for text file output
+        st.download_button(
+            label="Download ASCII Art (.txt)",
+            data=ascii_result,
+            file_name="steam_ascii_art.txt",
+            mime="text/plain"
+        )
+    except Exception as e:
+        st.error(f"An error occurred while processing the image: {e}")
+else:
+    st.info("Upload an image file above to instantly generate your custom ASCII copy-paste block.")
